@@ -5,33 +5,37 @@
     width:fit-content;
     margin-left: auto;
     margin-right: auto;
-    border-radius: 25px;
+    border-radius: 5px;
+    padding: 5px;
 }
 
 .Basic{
     border: 1px solid burlywood;
-    text-align: center;
+    text-align: left;
     background-color: bisque;
     width:fit-content;
     margin-left: auto;
     margin-right: auto;
-    border-radius: 25px;
+    border-radius: 5px;
+    padding: 5px;
 }
 .Recent{
     border: 1px solid burlywood;
-    text-align: center;
+    text-align: left;
     background-color: bisque;
     width:fit-content;
     margin-left: auto;
     margin-right: auto;
-    border-radius: 25px;
+    border-radius: 5px;    padding: 5px;
 }
 .More{
     border: 1px solid burlywood;
-    text-align: center;
+    text-align: left;
     background-color: bisque;
     width:fit-content;
     margin-left: auto;
     margin-right: auto;
-    border-radius: 25px;
+    border-radius: 5px;
+    padding: 5px;
+
 }
