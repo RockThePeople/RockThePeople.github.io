@@ -1,12 +1,37 @@
-h1{
-    color:yellow;
+.Top{
+    border: 1px solid burlywood;
+    text-align: center;
+    background-color: bisque;
+    width:fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 25px;
 }
-.likelion{
-    color : blue;
-    font-size: 50px;
-    font-weight: bold;
+
+.Basic{
+    border: 1px solid burlywood;
+    text-align: center;
+    background-color: bisque;
+    width:fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 25px;
 }
-#front{
-    color:green;
-    font-size: 30px;
+.Recent{
+    border: 1px solid burlywood;
+    text-align: center;
+    background-color: bisque;
+    width:fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 25px;
+}
+.More{
+    border: 1px solid burlywood;
+    text-align: center;
+    background-color: bisque;
+    width:fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 25px;
 }
