@@ -1,0 +1,60 @@
+<html>
+
+<head>
+    <script src="sha256Shader.js"></script>
+    <script src="sha256test.js"></script>
+    <style>
+        body {
+            font-family: verdana;
+        }
+    </style>
+
+    <script>
+        window.onload = () => {
+            if (!navigator.gpu) {
+                console.log("NON");
+                document.getElementById("not_available").style.opacity = 1;
+                document.getElementById("not_available").style.pointerEvents = "initial";
+                document.getElementById("bake").style.opacity = 0.4;
+                document.getElementById("bake").style.pointerEvents = "none";
+
+                return;
+            }
+
+            document.getElementById("button").addEventListener("click", async () => {
+                var difficulty = document.getElementById("inputDiff").value
+                if (!difficulty) {
+                    difficulty = 2;
+                }
+                console.log("difficulty : ", difficulty);
+                const result = await mining(difficulty);
+                document.getElementById("result").innerHTML = result;
+            })
+        }
+    </script>
+</head>
+
+<body>
+    <h1>
+        Hybrid Blockchain Mining
+    </h1>
+    <div id="bake">
+        <input type="text" id="inputDiff">
+        <button id="button" style="width: fit-content; height: 22px;"> ⛏️ start mining 👷 </button><br />
+        <div id="tohash">
+        </div>
+        <div id="result">
+        </div>
+        <div id="not_available" style="opacity:0;pointer-events: none;">
+            <h2>
+                <span style="color : red">Your navigator currently does not support WebGPU.</span>
+            </h2>
+            <h3>
+                WebGPU is available for now in <a href="https://www.google.com/chrome/canary/">Chrome Canary</a> on
+                desktop behind an experimental flag. You can enable it at
+                chrome://flags/#enable-unsafe-webgpu.
+            </h3>
+        </div>
+</body>
+
+</html>
