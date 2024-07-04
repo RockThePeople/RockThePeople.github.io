@@ -34,13 +34,13 @@ const mining = async (inputdifficulty) => {
   };
 
   const difficulty = setDifficulty(inputdifficulty);
+  console.log(difficulty);
   let result = "";
   let k = 0;
   for (let value of Array.from(new Uint32Array(difficulty))) {
     result += value.toString(16).toUpperCase();
     k++
   }
-  console.log(difficulty)
   returnObejct.push(`Difficulty (byte-len : ${k}): ${result}`)
   // 밥먹고 와서 이거 전달하는거 짜기
 

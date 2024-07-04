@@ -171,6 +171,9 @@ const sha256Shader = /*WGSL*/`
   fn u32_array_less_than(a : ptr<function, array<u32, SHA256_BLOCK_SIZE>>, b : ptr<function, array<u32, SHA256_BLOCK_SIZE>>, len : u32) -> bool {
     for (var i : u32 = 0; i < len; i++) {
       if ((*a)[i] > (*b)[i]) { return false; }
+      else if ((*a)[i] < (*b)[i]) {
+        return true;
+      }
     }
     return true;
   }
@@ -237,7 +240,8 @@ const sha256Shader = /*WGSL*/`
       sha256_final(&ctx, &hash);
 
       if (u32_array_less_than(&hash, &local_difficulty, local_difficultySize)) {
-        for (var i : u32 = 0; i < SHA256_BLOCK_SIZE; i++) { finalHash[i] = hash[i]; }
+        for (var i : u32 = 0
+        ; i < SHA256_BLOCK_SIZE; i++) { finalHash[i] = hash[i]; }
         for (var j : u32 = 0; j < 10; j++) { finalNonce[j] = nonce_array[j]; }
         atomicStore(&flagBuffer, 1u);
         return;
