@@ -6,24 +6,14 @@ const mining = async (inputdifficulty) => {
   const device = await adapter.requestDevice();
 
   const returnObejct = [];
+  
   //난이도 세팅
-
   const fromHexString = (hexString) => Uint32Array.from((hexString.split("").map(e => e.charCodeAt(0))));
-
-  // const setDifficulty = (difficultyDigits) => {
-  //   const hashLength = 64;
-  //   let target = "";
-  //   for (let i = 0; i < difficultyDigits; i++) { target += '0' }
-  //   target += 'F'.repeat(hashLength - difficultyDigits);
-  //   return fromHexString(target);
-  // };
-
   const setDifficulty = (difficultyDigits) => {
     const hashLength = 64;
     let target = "";
     for (let i = 0; i < difficultyDigits; i++) { target += '0' }
     target += 'F'.repeat(hashLength - difficultyDigits);
-    //let converted = fromHexString(target);
     return new Uint32Array(target.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
   };
 
@@ -42,7 +32,6 @@ const mining = async (inputdifficulty) => {
     k++
   }
   returnObejct.push(`Difficulty (byte-len : ${k}): ${result}`)
-  // 밥먹고 와서 이거 전달하는거 짜기
 
   //기본 데이터셋 생성
   const previousBlockHash = generateRandomHash(); // len = 128
@@ -58,16 +47,10 @@ const mining = async (inputdifficulty) => {
     usage: GPUBufferUsage.STORAGE,
   });
   const arrayBufferbaseHashArray = gpuBufferbaseHashArray.getMappedRange();
-  // buffer size : 4 byte / string
   new Int32Array(arrayBufferbaseHashArray).set(baseHashArray);
   gpuBufferbaseHashArray.unmap();
 
-  // 위에 fromHexString 하면 몇조각으로 쪼개졌는지 ? 
-  // blockcheader의 경우 18조각으로 컷
   const size = new Uint32Array([inputdifficulty]);
-
-  // 여기서부터 Buffer settings
-  // gpuBuffer
   const difficultySize = device.createBuffer({
     mappedAtCreation: true,
     size: 4,
@@ -75,7 +58,6 @@ const mining = async (inputdifficulty) => {
   });
   const arrayBufferSize = difficultySize.getMappedRange();
   new Int32Array(arrayBufferSize).set(size);
-  // 이렇게 세팅 해줘야함. 멋대로 4바이트 단위로 해야되고, 32 Int array 사용하는 것으로 맞춰서 difficultySize에 넣어야함
   difficultySize.unmap();
 
   const gpuBufferDifficulty = device.createBuffer({
@@ -83,7 +65,6 @@ const mining = async (inputdifficulty) => {
     size: difficulty.byteLength,
     usage: GPUBufferUsage.STORAGE,
   });
-
   const arrayBufferDifficulty = gpuBufferDifficulty.getMappedRange();
   new Int32Array(arrayBufferDifficulty).set(difficulty);
   gpuBufferDifficulty.unmap();
@@ -185,7 +166,7 @@ const mining = async (inputdifficulty) => {
   passEncoder.setBindGroup(0, bindGroup);
 
   // 워크그룹 만들어 디스패칭. 여기  체크하고 넘어갈 것
-  passEncoder.dispatchWorkgroups(8, 8, 1);
+  passEncoder.dispatchWorkgroups(64);
   passEncoder.end();
 
   const gpuReadBuffer = device.createBuffer({
