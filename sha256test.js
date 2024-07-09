@@ -1,3 +1,58 @@
+const fromHexString = (hexString) => Uint32Array.from((hexString.split("").map(e => e.charCodeAt(0))));
+
+const setDifficulty = (difficultyDigits) => {
+  const hashLength = 64;
+  let target = [];
+  for (let i = 0; i < difficultyDigits; i++) { target.push('0') }
+  for (let i = difficultyDigits; i < hashLength; i++) { target.push('F') }
+  console.log(target)
+  return target;
+};
+const u32Arr_to_hexArr = (value) => {
+  let hexString = value.toString(16);
+  if (hexString.length < 2) {
+    hexString = '0' + hexString;
+  }
+  return hexString;
+}
+const generateRandomHash = (difficultyDigits) => {
+  const charset = '0123456789ABCDEF';
+  let randomArray = "";
+  for (let i = 0; i < difficultyDigits; i++) { randomArray += '0' }
+  for (let i = 0; i < (64 - difficultyDigits); i++) {
+    const randomIndex = Math.floor(Math.random() * charset.length);
+    randomArray += charset[randomIndex];
+  }
+  return randomArray;
+};
+const diff_string_to_256array = (difficulty) => {
+  const byteArray = [];
+  for (let i = 0; i < difficulty.length; i += 2) {
+    if (difficulty[i] == '0' && difficulty[i + 1] == '0') {
+      byteArray.push(0);
+    };
+    if (difficulty[i] == '0' && difficulty[i + 1] == 'F') {
+      byteArray.push(15);
+    };
+    if (difficulty[i] == 'F' && difficulty[i + 1] == 'F') {
+      byteArray.push(255);
+    };
+    if (difficulty[i] == 'F' && difficulty[i + 1] == '0') {
+      byteArray.push(240);
+    };
+  }
+  return byteArray;
+};
+
+const generateBlockTemplate = () => {
+  // const version = "22064000" // 4바이트
+  // const previousBlockHash = generateRandomHash(inputdifficulty); // len = 128;
+  const previousBlockHash = "00000000007EB85F4A2BBAD4B04F42DC05A17443F78D9514DFE0FD51E1CF49F5"; //32바이트
+  const merkleRoot = generateRandomHash(0);
+  const timestamp = Math.floor(Date.now() / 1000).toString(16); // len = 8
+  return fromHexString((`${previousBlockHash}${merkleRoot}${timestamp}`).toUpperCase());
+}
+
 const mining = async (inputdifficulty) => {
 
   //GPU 가용여부 확인
@@ -6,40 +61,12 @@ const mining = async (inputdifficulty) => {
   const device = await adapter.requestDevice();
 
   const returnObejct = [];
-  
-  //난이도 세팅
-  const fromHexString = (hexString) => Uint32Array.from((hexString.split("").map(e => e.charCodeAt(0))));
-  const setDifficulty = (difficultyDigits) => {
-    const hashLength = 64;
-    let target = "";
-    for (let i = 0; i < difficultyDigits; i++) { target += '0' }
-    target += 'F'.repeat(hashLength - difficultyDigits);
-    return new Uint32Array(target.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-  };
 
-  const generateRandomHash = () => {
-    const array = new Uint8Array(64);
-    window.crypto.getRandomValues(array);
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-  };
+  const difficulty = diff_string_to_256array(setDifficulty(inputdifficulty));
+  returnObejct.push(`Difficulty (len = ${difficulty.length}): ${difficulty}`);
 
-  const difficulty = setDifficulty(inputdifficulty);
-  console.log(difficulty);
-  let result = "";
-  let k = 0;
-  for (let value of Array.from(new Uint32Array(difficulty))) {
-    result += value.toString(16).toUpperCase();
-    k++
-  }
-  returnObejct.push(`Difficulty (byte-len : ${k}): ${result}`)
-
-  //기본 데이터셋 생성
-  const previousBlockHash = generateRandomHash(); // len = 128
-  const merkleRoot = generateRandomHash();
-  const timestamp = Math.floor(Date.now() / 1000).toString(16); // len = 8
-  const blockheader = (`${previousBlockHash}${merkleRoot}${timestamp}`).toUpperCase(); // len = 264
-  returnObejct.push(`Block Header : ${blockheader}`);
-  const baseHashArray = fromHexString(blockheader);
+  const baseHashArray = generateBlockTemplate();
+  console.log("Base Array : ", baseHashArray, "\nSize : ", baseHashArray.byteLength);
 
   const gpuBufferbaseHashArray = device.createBuffer({
     mappedAtCreation: true,
@@ -50,26 +77,25 @@ const mining = async (inputdifficulty) => {
   new Int32Array(arrayBufferbaseHashArray).set(baseHashArray);
   gpuBufferbaseHashArray.unmap();
 
-  const size = new Uint32Array([inputdifficulty]);
   const difficultySize = device.createBuffer({
     mappedAtCreation: true,
     size: 4,
     usage: GPUBufferUsage.STORAGE,
   });
   const arrayBufferSize = difficultySize.getMappedRange();
-  new Int32Array(arrayBufferSize).set(size);
+  new Int32Array(arrayBufferSize).set([inputdifficulty]);
   difficultySize.unmap();
 
   const gpuBufferDifficulty = device.createBuffer({
     mappedAtCreation: true,
-    size: difficulty.byteLength,
+    size: 128,
     usage: GPUBufferUsage.STORAGE,
   });
   const arrayBufferDifficulty = gpuBufferDifficulty.getMappedRange();
   new Int32Array(arrayBufferDifficulty).set(difficulty);
   gpuBufferDifficulty.unmap();
 
-  const resultHashBufferSize = Uint32Array.BYTES_PER_ELEMENT * 32; // 원래 32 -> nonce 때매 33
+  const resultHashBufferSize = Uint32Array.BYTES_PER_ELEMENT * 20480;
   const resultHashBuffer = device.createBuffer({
     size: resultHashBufferSize,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC
@@ -144,7 +170,7 @@ const mining = async (inputdifficulty) => {
     // shader code로 세팅
   });
 
-  // 이렇게 파이프라인 짤때도 bindgroupLayout으로 짜야함
+  // // 이렇게 파이프라인 짤때도 bindgroupLayout으로 짜야함
   const computePipeline = device.createComputePipeline({
     layout: device.createPipelineLayout({
       bindGroupLayouts: [bindGroupLayout]
@@ -161,12 +187,12 @@ const mining = async (inputdifficulty) => {
 
   const start = performance.now();
 
-  // 파이프라인 만들고, 바인딩한거 세팅하고
+  // // 파이프라인 만들고, 바인딩한거 세팅하고
   passEncoder.setPipeline(computePipeline);
   passEncoder.setBindGroup(0, bindGroup);
 
-  // 워크그룹 만들어 디스패칭. 여기  체크하고 넘어갈 것
-  passEncoder.dispatchWorkgroups(64);
+  // // 워크그룹 만들어 디스패칭. 여기  체크하고 넘어갈 것
+  passEncoder.dispatchWorkgroups(20); // 64로 변경
   passEncoder.end();
 
   const gpuReadBuffer = device.createBuffer({
@@ -211,25 +237,22 @@ const mining = async (inputdifficulty) => {
   const end = performance.now();
 
   if (flag === 1) {
+
     let hash = "";
-    let i = 0;
     for (let value of Array.from(new Uint32Array(hashBuffer))) {
-      hash += value.toString(16);
-      i++;
+      hash += u32Arr_to_hexArr(value) + ",";
     }
 
     let nonce = "";
-    let j = 0;
     for (let value of Array.from(new Uint32Array(nonceBuffer))) {
-      nonce += value.toString(10);
-      j++;
+      nonce += (value - 48);
     }
 
-    returnObejct.push(`Final nonce (byte-len : ${j}) : ${nonce}`);
-    returnObejct.push(`Hash result (byte-len : ${i}): ${hash.toUpperCase()}`);
+    returnObejct.push(`Final nonce : ${nonce}`);
+    returnObejct.push(`Hash result : ${hash.toUpperCase()}`);
   } else {
     returnObejct.push('No valid nonce found.');
-  }
+  };
 
   returnObejct.push(`Operation time (sec) : ${(end - start) / 1000}`);
   console.log(new Uint32Array(hashBuffer))
@@ -239,4 +262,5 @@ const mining = async (inputdifficulty) => {
   </ul>`;
 
   return returnHTML;
+
 }

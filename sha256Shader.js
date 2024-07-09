@@ -16,6 +16,8 @@ const sha256Shader = /*WGSL*/`
   @group(0) @binding(5) var<storage, read_write> flagBuffer : atomic<u32>;
 
   const SHA256_BLOCK_SIZE = 32;
+  const inputLen = 136;
+  const headerLen = 146;
 
   const k = array<u32, 64> (
     0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
@@ -88,6 +90,7 @@ const sha256Shader = /*WGSL*/`
       a = t1 + t2;
     }
 
+
     (*ctx).state[0] += a;
     (*ctx).state[1] += b;
     (*ctx).state[2] += c;
@@ -98,7 +101,7 @@ const sha256Shader = /*WGSL*/`
     (*ctx).state[7] += h;
   }
 
-  fn sha256_update(ctx : ptr<function, SHA256_CTX>, data : ptr<function, array<u32, 274>>, len : u32)
+  fn sha256_update(ctx : ptr<function, SHA256_CTX>, data : ptr<function, array<u32, headerLen>>, len : u32)
   {
     for (var i : u32 = 0; i < len; i++) {
       (*ctx).data[(*ctx).datalen] = (*data)[i];
@@ -107,7 +110,23 @@ const sha256Shader = /*WGSL*/`
         sha256_transform(ctx);
         if ((*ctx).bitlen[0] > 0xffffffff - 512) {
           (*ctx).bitlen[1]++;
-        }
+        };
+        (*ctx).bitlen[0] += 512;
+        (*ctx).datalen = 0;
+      }
+    }
+  }
+
+  fn sha256_update_2(ctx : ptr<function, SHA256_CTX>, data : ptr<function, array<u32, SHA256_BLOCK_SIZE>>)
+  {
+    for (var i : u32 = 0; i < SHA256_BLOCK_SIZE; i++) {
+      (*ctx).data[(*ctx).datalen] = (*data)[i];
+      (*ctx).datalen++;
+      if ((*ctx).datalen == 64) {
+        sha256_transform(ctx);
+        if ((*ctx).bitlen[0] > 0xffffffff - 512) {
+          (*ctx).bitlen[1]++;
+        };
         (*ctx).bitlen[0] += 512;
         (*ctx).datalen = 0;
       }
@@ -133,7 +152,7 @@ const sha256Shader = /*WGSL*/`
         i++;
       }
       sha256_transform(ctx);
-      for (var i = 0; i < 56 ; i++) {
+      for (var i: u32 = 0; i < 56 ; i++) {
         (*ctx).data[i] = 0;
       }
     }
@@ -164,12 +183,9 @@ const sha256Shader = /*WGSL*/`
     }
   }
 
-  fn u32_array_less_than(a : ptr<function, array<u32, SHA256_BLOCK_SIZE>>, b : ptr<function, array<u32, SHA256_BLOCK_SIZE>>, len : u32) -> bool {
+  fn u32_array_less_than(hash : ptr<function, array<u32, SHA256_BLOCK_SIZE>>, diff : ptr<function, array<u32, SHA256_BLOCK_SIZE>>, len : u32) -> bool {
     for (var i : u32 = 0; i < len; i++) {
-      if ((*a)[i] > (*b)[i]) { return false; }
-      else if ((*a)[i] < (*b)[i]) {
-        return true;
-      }
+      if ((*hash)[i] > (*diff)[i]) { return false; }
     }
     return true;
   }
@@ -177,48 +193,51 @@ const sha256Shader = /*WGSL*/`
   fn u32_nonce_to_u32_array(n: u32) -> array<u32, 10> {
     var result : array<u32, 10>;
     var temp : u32 = n; 
-    var div : u32 = 10; 
 
-    for(var i :u32 = 9 ; i >= 0; i--) {
-      result[i] = temp %  div;
-      temp = temp / div;
-      if (temp == 0) {
-        break;
+    for(var i :u32 = 10u ; i > 0; i--) {
+      if(temp == 0) {
+        result[i-1] = 48;
       }
+      result[i-1] = (temp %  10u) + 48u;
+      temp = temp / 10u;
     };
     return result;
   }
 
-  @compute @workgroup_size(4,4,1)
+  @compute @workgroup_size(64)
   fn main(
     @builtin(workgroup_id) workgroup_id : vec3<u32>,
+    @builtin(local_invocation_index) local_invocation_index: u32
     // @builtin(local_invocation_id) local_invocation_id : vec3<u32>,
     // @builtin(global_invocation_id) global_invocation_id : vec3<u32>,
-    @builtin(local_invocation_index) local_invocation_index: u32,
     // @builtin(num_workgroups) num_workgroups: vec3<u32>
   ) {
-    if (atomicLoad(&flagBuffer) == 1u) { return; }
     var ctx : SHA256_CTX;
     var hash : array<u32, SHA256_BLOCK_SIZE>;
     var local_difficulty : array<u32, SHA256_BLOCK_SIZE>;
-    var local_difficultySize : u32 = difficultySize[0];
-    var local_input : array<u32, 274>;
+    var local_difficultySize : u32 = (difficultySize[0]+1u) / 2u;
+    var local_input : array<u32, headerLen>;
     var nonce_array : array<u32, 10>;
 
-    let thread_id = workgroup_id.x * 16u + local_invocation_index;
-  
-    let nonce_per_thread = 4194304u; // 각 쓰레드가 처리할 nonce 개수
-    let nonce_start = thread_id * nonce_per_thread;
-    let nonce_end = nonce_start + nonce_per_thread;
+    let thread_id : u32 = (workgroup_id.x * 64u) + local_invocation_index;
+    finalHash[thread_id] = thread_id;
 
-    for (var i : u32 = 0; i < 264; i++) { 
-      local_input[i] = input[i]; 
-    }
-    for (var i : u32 = 0; i < 64; i++) { 
-      local_difficulty[i] = difficulty[i]; 
-    }
+    let nonce_per_thread : u32 = 100000u; // 각 쓰레드가 처리할 nonce 개수
+    let nonce_start :u32 = thread_id * nonce_per_thread;
+    let nonce_end :u32= nonce_start + nonce_per_thread - 1u;
+
+    for (var i : u32 = 0; i < inputLen; i++) { local_input[i] = input[i]; }
+    for (var i : u32 = 0; i < SHA256_BLOCK_SIZE; i++) { local_difficulty[i] = difficulty[i]; }
     for (var nonce : u32 = nonce_start; nonce < nonce_end; nonce++) {
+      
       if (atomicLoad(&flagBuffer) == 1u) { return; }
+
+      nonce_array = u32_nonce_to_u32_array(nonce);
+      for (var k : u32 = 0; k < 10; k++) { 
+        let k_i : u32 = k + inputLen;
+        local_input[k_i] = nonce_array[k]; 
+      }
+
       ctx.datalen = 0;
       ctx.bitlen[0] = 0;
       ctx.bitlen[1] = 0;
@@ -230,15 +249,26 @@ const sha256Shader = /*WGSL*/`
       ctx.state[5] = 0x9b05688c;
       ctx.state[6] = 0x1f83d9ab;
       ctx.state[7] = 0x5be0cd19;
-      
-      nonce_array = u32_nonce_to_u32_array(nonce);
-      for (var k : u32 = 264; k < 274; k++) { local_input[k] = nonce_array[k-264]; }
-      sha256_update(&ctx, &local_input, 274);
+      sha256_update(&ctx, &local_input, headerLen);
+      sha256_final(&ctx, &hash);
+
+      ctx.datalen = 0;
+      ctx.bitlen[0] = 0;
+      ctx.bitlen[1] = 0;
+      ctx.state[0] = 0x6a09e667;
+      ctx.state[1] = 0xbb67ae85;
+      ctx.state[2] = 0x3c6ef372;
+      ctx.state[3] = 0xa54ff53a;
+      ctx.state[4] = 0x510e527f;
+      ctx.state[5] = 0x9b05688c;
+      ctx.state[6] = 0x1f83d9ab;
+      ctx.state[7] = 0x5be0cd19;
+      sha256_update_2(&ctx, &hash);
       sha256_final(&ctx, &hash);
 
       if (u32_array_less_than(&hash, &local_difficulty, local_difficultySize)) {
-        for (var i : u32 = 0; i < SHA256_BLOCK_SIZE; i++) { finalHash[i] = hash[i]; }
-        for (var j : u32 = 0; j < 10; j++) { finalNonce[j] = nonce_array[j]; }
+        for (var i : u32 = 0; i < SHA256_BLOCK_SIZE; i++) { finalHash[i] = hash[i]; };
+        for (var j : u32 = 0; j < 10; j++) { finalNonce[j] = nonce_array[j]; };
         atomicStore(&flagBuffer, 1u);
         return;
       }
