@@ -204,7 +204,7 @@ const sha256Shader = /*WGSL*/`
     return result;
   }
 
-  @compute @workgroup_size(64)
+  @compute @workgroup_size(32)
   fn main(
     @builtin(workgroup_id) workgroup_id : vec3<u32>,
     @builtin(local_invocation_index) local_invocation_index: u32
@@ -219,7 +219,7 @@ const sha256Shader = /*WGSL*/`
     var local_input : array<u32, headerLen>;
     var nonce_array : array<u32, 10>;
 
-    let thread_id : u32 = (workgroup_id.x * 64u) + local_invocation_index;
+    let thread_id : u32 = (workgroup_id.x * 32u) + local_invocation_index;
     finalHash[thread_id] = thread_id;
 
     let nonce_per_thread : u32 = 100000u; // 각 쓰레드가 처리할 nonce 개수
