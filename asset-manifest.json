@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/RockThePeople/RockThePeople.github.io/static/css/main.6557a517.css",
+    "main.js": "/RockThePeople/RockThePeople.github.io/static/js/main.8cc68bf0.js",
+    "static/js/453.298b342a.chunk.js": "/RockThePeople/RockThePeople.github.io/static/js/453.298b342a.chunk.js",
+    "index.html": "/RockThePeople/RockThePeople.github.io/index.html",
+    "main.6557a517.css.map": "/RockThePeople/RockThePeople.github.io/static/css/main.6557a517.css.map",
+    "main.8cc68bf0.js.map": "/RockThePeople/RockThePeople.github.io/static/js/main.8cc68bf0.js.map",
+    "453.298b342a.chunk.js.map": "/RockThePeople/RockThePeople.github.io/static/js/453.298b342a.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.6557a517.css",
+    "static/js/main.8cc68bf0.js"
+  ]
+}
