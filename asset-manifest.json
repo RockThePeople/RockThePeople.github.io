@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/RockThePeople/RockThePeople.github.io/static/css/main.3f554c68.css",
-    "main.js": "/RockThePeople/RockThePeople.github.io/static/js/main.3c0c9501.js",
-    "static/js/488.98c4bddb.chunk.js": "/RockThePeople/RockThePeople.github.io/static/js/488.98c4bddb.chunk.js",
-    "index.html": "/RockThePeople/RockThePeople.github.io/index.html",
-    "main.3f554c68.css.map": "/RockThePeople/RockThePeople.github.io/static/css/main.3f554c68.css.map",
-    "main.3c0c9501.js.map": "/RockThePeople/RockThePeople.github.io/static/js/main.3c0c9501.js.map",
-    "488.98c4bddb.chunk.js.map": "/RockThePeople/RockThePeople.github.io/static/js/488.98c4bddb.chunk.js.map"
+    "main.css": "/static/css/main.3f554c68.css",
+    "main.js": "/static/js/main.413d6cee.js",
+    "static/js/488.98c4bddb.chunk.js": "/static/js/488.98c4bddb.chunk.js",
+    "index.html": "/index.html",
+    "main.3f554c68.css.map": "/static/css/main.3f554c68.css.map",
+    "main.413d6cee.js.map": "/static/js/main.413d6cee.js.map",
+    "488.98c4bddb.chunk.js.map": "/static/js/488.98c4bddb.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.3f554c68.css",
-    "static/js/main.3c0c9501.js"
+    "static/js/main.413d6cee.js"
   ]
 }
